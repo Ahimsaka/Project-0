@@ -1,18 +1,13 @@
 import scala.io.StdIn.readLine
 import scala.io.Source
 import scala.collection.mutable.ArrayBuffer
-// The "Image" DSL is the easiest way to create images
-import doodle.image._
-// Colors and other useful stuff
-import doodle.core._
-
 
 object Weather_App {
 
   // ingests csv data into a 2d arraybuffer
-  def process_csv(source: String): Array[Map[String, Any]] = {
+  def process_csv(source: String): Array[Map[String, String]] = {
     val bufferedSource = Source.fromFile(source)
-    var output = new ArrayBuffer[Map[String, Any]]()
+    var output = new ArrayBuffer[Map[String, String]]()
 
     val lines = bufferedSource.getLines
     val labels = lines.next().split(",").map(_.trim)
@@ -39,6 +34,27 @@ object Weather_App {
     return output.toArray
   }
 
+  // define process for selected data set
+  def explore_data(selection: String,data_set: Array[Map[String, String]]) = {
+    var cont = true
+
+    do {
+      println(selection + " selected.\n\n")
+      println("Available data:")
+      data_set(0).keys.foreach(println)
+      print("Select data (or type 'back' to return)>: ")
+      var command = readLine()
+
+      if (command.toLowerCase().startsWith("back")) cont = false;
+      else if (data_set(0).contains(command)) {
+        data_set.foreach(row => println(row.get("date").get + " " + row.get(command).get))
+      }
+      else println("Command not recognized.")
+
+    } while (cont)
+
+  }
+
   // define variable to hold data read from csv
   def main(args: Array[String]): Unit = {
     // read in csv
@@ -59,34 +75,17 @@ object Weather_App {
     var cont = true
 
     do {
-      print("Input command:>  ")
+      println("Available data sets:")
+
+      weather_data.keys.foreach(println)
+
+      print("\n\nSelect a data set (or type 'quit' to quit):>  ")
       var command = readLine()
 
       if (command.toLowerCase.startsWith("quit")) cont = false
       else if (weather_data.contains(command)) {
         /* DO SOMETHING HERE */
-
-
-
-val blackSquare = Image.rectangle(30, 30).fillColor(Color.black)
-val redSquare = Image.rectangle(30, 30).fillColor(Color.red)
-
-// A chessboard, broken into steps showing the recursive construction
-val twoByTwo =
-  (redSquare.beside(blackSquare))
-    .above(blackSquare.beside(redSquare))
-
-val fourByFour =
-  (twoByTwo.beside(twoByTwo))
-    .above(twoByTwo.beside(twoByTwo))
-
-val chessboard =
-  (fourByFour.beside(fourByFour))
-    .above(fourByFour.beside(fourByFour))
-
-
-
-
+        explore_data(command, weather_data.get(command).get)
       }
       else println("Command not recognized")
       
