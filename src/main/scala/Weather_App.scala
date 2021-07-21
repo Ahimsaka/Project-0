@@ -5,19 +5,31 @@ import java.sql.{Connection,DriverManager}
 
 object Weather_App {
 
-
+  /* this method reads csv into an Array of Maps for each csv
+     
+     this method also inserts each csv into the database.  
+     
+     It would probably be a good idea to seperate those two tasks into separate methods and then call both 
+     but for MVP the current setup is acceptable. */
   def process_csv(source: String, city_name:String, city_id:Integer, connection:Connection): Array[Map[String, String]] = {
     val bufferedSource = Source.fromFile(source)
     val lines = bufferedSource.getLines
     val labels = lines.next().split(",").map(_.trim)
-    var output = new ArrayBuffer[Map[String, String]]()
+    
+    
+    // insert city into cities table
     var statement = connection.prepareStatement("INSERT INTO cities (city_id, name) VALUES (?, ?)")
     statement.setInt(1, city_id)
     statement.setString(2, city_name)
     statement.execute()
-
+    
+    var output = new ArrayBuffer[Map[String, String]]()
+    
+    // for each line of the csv, we'll add that record to the output object & to the weather database
     for (line <- bufferedSource.getLines) {
       val cols = line.split(",").map(_.trim)
+      
+      // add to output
       output += Map(
         labels(0) -> cols(0),
         labels(1) -> cols(1),
@@ -34,13 +46,13 @@ object Weather_App {
         labels(12) -> cols(12)
       )
 
+      // insert into database
       statement = connection.prepareStatement("INSERT INTO weather(city_id, date, actual_mean_temp, actual_min_temp, actual_max_temp," +
         "average_min_temp, average_max_temp, record_min_temp, record_max_temp, record_min_temp_year, record_max_temp_year, " +
         "actual_precipitation, average_precipitation, record_precipitation) " +
         "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);")
-
       statement.setInt(1, city_id)
-      statement.setString(2, cols(0))
+      if (cols(0) == "") statement.setNull(2, java.sql.Types.DATE) else statement.setString(2, cols(0))
       if (cols(1) == "") statement.setNull(3, java.sql.Types.INTEGER) else statement.setInt(3, cols(1).toInt)
       if (cols(2) == "") statement.setNull(4, java.sql.Types.INTEGER) else statement.setInt(4, cols(2).toInt)
       if (cols(3) == "") statement.setNull(5, java.sql.Types.INTEGER) else statement.setInt(5, cols(3).toInt)
@@ -54,13 +66,13 @@ object Weather_App {
       if (cols(11) == "") statement.setNull(13, java.sql.Types.FLOAT) else statement.setFloat(13, cols(11).toFloat)
       if (cols(12) == "") statement.setNull(14, java.sql.Types.FLOAT) else statement.setFloat(14, cols(12).toFloat)
       statement.execute()
-
     }
     bufferedSource.close
     return output.toArray
   }
 
-  // define process for selected data set
+  /* after CLI user selects a city, they enter this loop where they are able to view the data
+    for that city */
   def explore_data(selection: String,data_set: Array[Map[String, String]]) = {
     var cont = true
 
@@ -81,9 +93,7 @@ object Weather_App {
 
   }
 
-  // define variable to hold data read from csv
   def main(args: Array[String]): Unit = {
-
     val url = "jdbc:mysql://localhost:3306/weather"
     val username = "weather"
     val password = "pass"
@@ -91,6 +101,8 @@ object Weather_App {
     try {
         connection = DriverManager.getConnection(url, username, password)
         val statement = connection.createStatement
+
+        // create tables
         statement.executeUpdate("CREATE TABLE IF NOT EXISTS cities (" +
           "city_id int," +
           "name varchar(55)," +
@@ -118,7 +130,7 @@ object Weather_App {
           ");")
 
 
-          // read in csv
+          // read in csv & add to tables. 
           val weather_data = Map(
             "charlotte" -> process_csv(raw"C:\Users\Devin\Documents\Revature\P0\static\kclt.csv", "charlotte", 1, connection),
             "los angeles" -> process_csv(raw"C:\Users\Devin\Documents\Revature\P0\static\kcqt.csv", "los angeles", 2 , connection),
@@ -135,7 +147,7 @@ object Weather_App {
 
           // trigger to exit do/while loop
           var cont = true
-
+          // CLI loop: 
           do {
             println("Available data sets:")
 
@@ -152,9 +164,14 @@ object Weather_App {
           } while (cont)
     
           println("Goodbye")
+
     } catch {
         case e: Exception => e.printStackTrace
     } finally {    
+      /* we close tables because we read in the same csvs every time that the program is run. 
+        that's because this is a demo program. 
+        In a production version, we would remove these DROP updates and would accept the file location 
+        of new csvs as input instead of reading the same csvs every time. */
       connection.createStatement.executeUpdate("DROP TABLE weather;")
       connection.createStatement.executeUpdate("DROP TABLE cities;")
       connection.close
