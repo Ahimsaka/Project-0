@@ -1,5 +1,6 @@
 name := "PZeroApp"
 version := "0.1"
-scalaVersion := "2.11.12"
+scalaVersion := "2.13.4"
 
-libraryDependencies += "org.creativescala" %% "doodle" % "0.9.23"
+
+libraryDependencies += "mysql" % "mysql-connector-java" % "8.0.26"
